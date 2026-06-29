@@ -45,7 +45,7 @@ Cloudwright ships a native manifest per runtime, so each installs from the GitHu
 agy plugin install https://github.com/ramilvillon/cloudwright
 ```
 
-Installs the skills + commands declared in `plugin.yaml`.
+Installs the 5 skills declared in `plugin.yaml`.
 
 ### Codex
 

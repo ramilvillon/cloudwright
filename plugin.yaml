@@ -9,9 +9,3 @@ provides_skills:
   - privacy-auditor
   - cost-auditor
   - ri-planner
-provides_commands:
-  - architect
-  - security-audit
-  - privacy-audit
-  - cost-audit
-  - ri-plan
