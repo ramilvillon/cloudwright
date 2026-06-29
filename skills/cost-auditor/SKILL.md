@@ -9,7 +9,7 @@ description: Use when working in an AWS project and asked to analyze, reduce, or
 
 Run a structured, read-only audit of AWS spend across all major domains, then produce prioritized recommendations and ready-to-apply implementation artifacts. No changes are ever made to AWS infrastructure.
 
-> **Bundled file paths.** Paths like `references/example.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+> **Bundled file paths.** Paths like `SKILL.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
 
 ## HARD CONSTRAINT: READ-ONLY AUDIT ONLY
 
@@ -78,7 +78,7 @@ An AWS cost audit generates 30–100K+ tokens of raw CLI output and many sequent
 ```
 Main Agent
 └── Orchestrator (general-purpose subagent)
-    ├── Phase 1 — launches 5 domain agents IN PARALLEL (single Agent tool message)
+    ├── Phase 1 — Dispatch all 5 domain subagents in parallel (one per domain) in a single batch
     │   ├── [A] Compute      → EC2, RDS, Lambda, ECS, EKS, ElastiCache, MQ  (no delay)
     │   ├── [B] Storage      → S3, EBS, DynamoDB, Redshift, ECR              (sleep 5)
     │   ├── [C] Networking   → NAT, ELB, CloudFront, WAF, CloudTrail, GuardDuty, Config (sleep 10)
@@ -108,7 +108,7 @@ Dispatch a subagent (general-purpose). Description: "AWS cost audit — orchestr
 > Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
 >   [Main agent: substitute the absolute path to SKILL.md in this skill's directory]
 >
-> Step 3 — Launch all 5 domain agents IN PARALLEL (send a single Agent tool message with all 5 calls):
+> Step 3 — Dispatch all 5 domain subagents in parallel (one per domain) in a single batch:
 >
 >   Agent A — Compute domain:
 >     "Run all commands in the 'Domain A — Compute' section of the skill file.

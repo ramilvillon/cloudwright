@@ -11,7 +11,7 @@ Run a structured, read-only analysis of RI coverage gaps across all RI-eligible 
 
 **No RI purchases are ever made by this skill.**
 
-> **Bundled file paths.** Paths like `references/example.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+> **Bundled file paths.** Paths like `SKILL.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
 
 ## HARD CONSTRAINT: READ-ONLY ANALYSIS ONLY
 
@@ -66,7 +66,7 @@ Use a 2-phase architecture. Phase 1 collects data in parallel across all 4 servi
 ```
 Main Agent
 └── Orchestrator (general-purpose subagent)
-    ├── Phase 1 — launches 4 domain agents IN PARALLEL (single Agent tool message)
+    ├── Phase 1 — Dispatch all 4 domain subagents in parallel (one per domain) in a single batch
     │   ├── [A] EC2         → running instances, active RIs, CE recs  (no delay)
     │   ├── [B] RDS         → DB instances, reserved DBs, CE recs      (sleep 5)
     │   ├── [C] ElastiCache → cache clusters, reserved nodes, CE recs  (sleep 10)
@@ -95,7 +95,7 @@ Dispatch a subagent (general-purpose). Description: "AWS RI planner — orchestr
 > Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
 >   [Main agent: substitute the absolute path to SKILL.md in this skill's directory]
 >
-> Step 3 — Launch all 4 domain agents IN PARALLEL (send a single Agent tool message with all 4 calls):
+> Step 3 — Dispatch all 4 domain subagents in parallel (one per domain) in a single batch:
 >
 >   Agent A — EC2 domain:
 >     "Run all commands in the 'Domain A — EC2' section of the skill file.
