@@ -1,0 +1,6 @@
+{
+  "name": "cloudwright",
+  "description": "AWS Well-Architected design plus read-only governance auditors (security, privacy, cost, Reserved Instances).",
+  "version": "0.2.0",
+  "contextFileName": "GEMINI.md"
+}
