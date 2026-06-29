@@ -1,0 +1,51 @@
+{
+  "skill_name": "cloud-architect",
+  "evals": [
+    {
+      "id": 0,
+      "name": "static-marketing-site",
+      "prompt": "I need AWS infrastructure for a static marketing website (just HTML/CSS/JS, no backend). Single AWS account, region us-east-1, prod environment only, low traffic, public data (no PII), no auth needed. Output to ./iac (default). Please go through the full design + audit + promote flow end-to-end.",
+      "files": [],
+      "assertions": [
+        {"name": "final_iac_dir_exists", "description": "The promoted iac/ directory exists at outputs/iac/."},
+        {"name": "adr_present", "description": "An ADR.md file exists at outputs/iac/ADR.md."},
+        {"name": "readme_present", "description": "A README.md file exists at outputs/iac/README.md."},
+        {"name": "terraform_files_present", "description": "At least one .tf file exists."},
+        {"name": "tfvars_example_present", "description": "At least one .tfvars or .tfvars.example file exists."},
+        {"name": "adr_has_mermaid_diagram", "description": "ADR.md contains a ```mermaid code fence."},
+        {"name": "adr_has_consequences_section", "description": "ADR.md has a '## Consequences' section."},
+        {"name": "adr_has_alternatives_section", "description": "ADR.md has a '## Alternatives' section."},
+        {"name": "adr_has_audit_findings", "description": "ADR.md 'Audit Findings' section is populated (not placeholder)."},
+        {"name": "adr_has_cost_estimate", "description": "ADR.md 'Cost estimate' section has a dollar figure."},
+        {"name": "no_placeholder_strings", "description": "ADR.md has no '{{' or 'pending audit'."},
+        {"name": "staging_dir_cleaned_up", "description": "outputs/iac.staging/ no longer exists."},
+        {"name": "static_site_cdn_used", "description": "Generated TF uses CloudFront + S3."},
+        {"name": "no_database_no_compute", "description": "No RDS/DynamoDB/EC2/Lambda."}
+      ]
+    },
+    {
+      "id": 1,
+      "name": "account-baseline-2vpc-pii",
+      "prompt": "Design an AWS account baseline with networking: 2 VPCs (dev+staging shared, prod), region ap-southeast-1, PII data, IAM users + root only.",
+      "files": [],
+      "assertions": [
+        {"name": "final_iac_dir_exists", "description": "outputs/iac/ exists."},
+        {"name": "adr_present", "description": "ADR.md exists."},
+        {"name": "readme_present", "description": "README.md exists."},
+        {"name": "terraform_files_present", "description": "At least one .tf file."},
+        {"name": "adr_has_mermaid_diagram", "description": "ADR has mermaid."},
+        {"name": "adr_has_consequences_section", "description": "ADR has Consequences."},
+        {"name": "adr_has_alternatives_section", "description": "ADR has Alternatives."},
+        {"name": "adr_has_audit_findings", "description": "Audit Findings populated."},
+        {"name": "adr_has_cost_estimate", "description": "Cost estimate present."},
+        {"name": "no_placeholder_strings", "description": "No placeholders in ADR."},
+        {"name": "staging_dir_cleaned_up", "description": "iac.staging/ removed."},
+        {"name": "cloudtrail_resource_present", "description": "aws_cloudtrail resource exists."},
+        {"name": "guardduty_resource_present", "description": "aws_guardduty_detector exists."},
+        {"name": "two_vpc_configs_supported", "description": "2 tfvars (nonprod + prod) or equivalent."},
+        {"name": "vpc_flow_logs_present", "description": "aws_flow_log exists."},
+        {"name": "pii_region_is_ap_southeast_1", "description": "Region is ap-southeast-1."}
+      ]
+    }
+  ]
+}
