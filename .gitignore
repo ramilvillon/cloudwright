@@ -1,2 +1,5 @@
 .DS_Store
 node_modules/
+
+# Internal planning artifacts (specs/plans) — not shipped in the public plugin
+docs/superpowers/
