@@ -15,6 +15,8 @@ Output: a structured privacy scorecard + PII inventory + self-contained remediat
 
 **Scope:** infra-checkable subset of 27701 — residency, retention, PII discovery, cross-party sharing. Does not cover encryption-at-rest, access logging, or IAM; those belong to the sibling `security-auditor` (ISO 27001) skill. Every report footer points readers there.
 
+> **Bundled file paths.** Paths like `domains/data-residency.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+
 ## HARD CONSTRAINT: READ-ONLY AUDIT ONLY
 
 **Live infra mode MUST NOT apply, execute, or deploy any changes to AWS infrastructure — ever.**
@@ -105,47 +107,39 @@ Wait for the user's response before continuing.
 Announce: _"Starting IaC privacy scan. Scanning Terraform and CloudFormation files for ISO 27701 gaps. No AWS credentials required. No files will be modified."_
 
 Domain file map (use path(s) matching user's domain selection):
-- 1 → `${CLAUDE_SKILL_DIR}/domains/data-residency.md`
-- 2 → `${CLAUDE_SKILL_DIR}/domains/retention.md`
-- 3 → `${CLAUDE_SKILL_DIR}/domains/pii-discovery.md`
-- 4 → `${CLAUDE_SKILL_DIR}/domains/transfer-sharing.md`
+- 1 → `domains/data-residency.md`
+- 2 → `domains/retention.md`
+- 3 → `domains/pii-discovery.md`
+- 4 → `domains/transfer-sharing.md`
 - 5 → all 4 files above
 
-Launch a **single subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27701 IaC privacy scan — [domain(s)]". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27701 IaC privacy scan — [domain(s)]",
-  subagent_type: "general-purpose",
-  prompt: `
-You are an ISO 27701 IaC privacy scanner. Your job is read-only file analysis. Never modify any files.
-
-CONTEXT (from interview):
-- PII role: [Controller / Processor / Both]
-- PII scope: [tag KEY=VALUE / ALL_STORES]
-- Allowed regions: [comma-list or "skip"]
-
-STEP 1 — Read the domain file(s) for your assigned domain(s):
-[Main agent: substitute this with the actual file paths from the domain file map above, based on the user's selection.]
-
-STEP 2 — Find IaC files in the repo using the Glob tool:
-  Patterns: **/*.tf, **/*.yaml, **/*.yml, **/*.json
-  Exclude: node_modules/, .git/, .terraform/, vendor/, package*.json, package-lock.json
-
-STEP 3 — Run every IaC check defined in the domain file(s) against the found files.
-Apply the scope filter: if tag-based, only consider resources carrying PII_TAG_KEY=PII_TAG_VALUE; if ALL_STORES, treat every data store as in-scope.
-Determine PASS / FAIL / PARTIAL / REPORT per the criteria in each domain file.
-Filter clause citations by role: Controller → A.7.x only, Processor → B.8.x only, Both → cite both.
-
-STEP 4 — Build the privacy report using the Output Format defined in:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
-
-Return a brief summary: X/Y PASS/FAIL controls passing, Z REPORT items surfaced, top 3 critical gaps.
-  `
-})
-```
+> You are an ISO 27701 IaC privacy scanner. Your job is read-only file analysis. Never modify any files.
+>
+> CONTEXT (from interview):
+> - PII role: [Controller / Processor / Both]
+> - PII scope: [tag KEY=VALUE / ALL_STORES]
+> - Allowed regions: [comma-list or "skip"]
+>
+> STEP 1 — Read the domain file(s) for your assigned domain(s):
+> [Main agent: substitute the **absolute** path to the domain file(s) based on the user's selection (this skill's directory + /domains/<name>.md)]
+>
+> STEP 2 — Find IaC files in the repo using the Glob tool:
+>   Patterns: **/*.tf, **/*.yaml, **/*.yml, **/*.json
+>   Exclude: node_modules/, .git/, .terraform/, vendor/, package*.json, package-lock.json
+>
+> STEP 3 — Run every IaC check defined in the domain file(s) against the found files.
+> Apply the scope filter: if tag-based, only consider resources carrying PII_TAG_KEY=PII_TAG_VALUE; if ALL_STORES, treat every data store as in-scope.
+> Determine PASS / FAIL / PARTIAL / REPORT per the criteria in each domain file.
+> Filter clause citations by role: Controller → A.7.x only, Processor → B.8.x only, Both → cite both.
+>
+> STEP 4 — Build the privacy report using the Output Format defined in SKILL.md
+> (absolute path: this skill's directory + /SKILL.md — main agent: substitute the actual absolute path in this prompt).
+>
+> STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
+>
+> Return a brief summary: X/Y PASS/FAIL controls passing, Z REPORT items surfaced, top 3 critical gaps.
 
 Main agent: relay the subagent's summary to the user and point to the saved report file.
 
@@ -161,43 +155,35 @@ aws sts get-caller-identity
 ```
 If this fails: stop and ask the user to configure AWS credentials (`aws configure` or set `AWS_PROFILE`).
 
-Launch a **single subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27701 live infra privacy audit — [domain name]". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27701 live infra privacy audit — [domain name]",
-  subagent_type: "general-purpose",
-  prompt: `
-You are an ISO 27701 live AWS privacy auditor.
-HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
-Only use describe-*, list-*, get-* AWS CLI commands.
-
-CONTEXT (from interview):
-- PII role: [Controller / Processor / Both]
-- PII scope: [tag KEY=VALUE / ALL_STORES]
-- Allowed regions: [comma-list or "skip"]
-
-STEP 1 — Read the domain file for your assigned domain:
-[domain file path from ${CLAUDE_SKILL_DIR}/domains/]
-
-STEP 2 — Build the PII-scoped resource list first.
-If scope is tag-based: list resources carrying PII_TAG_KEY=PII_TAG_VALUE using the Resource Groups Tagging API.
-If scope is ALL_STORES: list all S3 buckets, RDS instances, DynamoDB tables, EBS volumes, EFS file systems, Redshift clusters in the account.
-Store this list as the PII inventory — every subsequent check filters to these resources only.
-
-STEP 3 — Run all live infra checks defined in the domain file against the PII-scoped resources.
-Apply rate limiting: sleep 0.2 between sequential API calls.
-Filter clause citations by role.
-
-STEP 4 — Build the privacy report using the Output Format defined in:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
-
-Return a brief summary: X/Y PASS/FAIL controls passing, Z REPORT items surfaced, top 3 critical gaps.
-  `
-})
-```
+> You are an ISO 27701 live AWS privacy auditor.
+> HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
+> Only use describe-*, list-*, get-* AWS CLI commands.
+>
+> CONTEXT (from interview):
+> - PII role: [Controller / Processor / Both]
+> - PII scope: [tag KEY=VALUE / ALL_STORES]
+> - Allowed regions: [comma-list or "skip"]
+>
+> STEP 1 — Read the domain file for your assigned domain:
+> [Main agent: substitute the **absolute** path to the domain file (this skill's directory + /domains/<name>.md)]
+>
+> STEP 2 — Build the PII-scoped resource list first.
+> If scope is tag-based: list resources carrying PII_TAG_KEY=PII_TAG_VALUE using the Resource Groups Tagging API.
+> If scope is ALL_STORES: list all S3 buckets, RDS instances, DynamoDB tables, EBS volumes, EFS file systems, Redshift clusters in the account.
+> Store this list as the PII inventory — every subsequent check filters to these resources only.
+>
+> STEP 3 — Run all live infra checks defined in the domain file against the PII-scoped resources.
+> Apply rate limiting: sleep 0.2 between sequential API calls.
+> Filter clause citations by role.
+>
+> STEP 4 — Build the privacy report using the Output Format defined in SKILL.md
+> (absolute path: this skill's directory + /SKILL.md — main agent: substitute the actual absolute path in this prompt).
+>
+> STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
+>
+> Return a brief summary: X/Y PASS/FAIL controls passing, Z REPORT items surfaced, top 3 critical gaps.
 
 Main agent: relay the subagent's summary to the user and point to the saved report file.
 
@@ -213,83 +199,75 @@ aws sts get-caller-identity
 ```
 If this fails: stop and ask the user to configure AWS credentials.
 
-Launch an **orchestrator subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27701 full privacy audit — orchestrator". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27701 full privacy audit — orchestrator",
-  subagent_type: "general-purpose",
-  prompt: `
-You are the ISO 27701 privacy audit orchestrator.
-HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
-
-CONTEXT (from interview):
-- PII role: [Controller / Processor / Both]
-- PII scope: [tag KEY=VALUE / ALL_STORES]
-- Allowed regions: [comma-list or "skip"]
-
-STEP 1 — Setup:
-  mkdir -p docs/tmp
-
-STEP 2 — Read the SKILL.md output format before starting:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 3 — Launch all 4 domain agents IN PARALLEL (single Agent tool message with all 4 calls):
-
-  Agent 1 — Data Residency (no delay):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     CONTEXT: role=[...], scope=[...], regions=[...]
-     Read ${CLAUDE_SKILL_DIR}/domains/data-residency.md
-     Build PII-scoped resource list first (see SKILL.md STEP 2).
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings (raw CLI output + PASS/FAIL/REPORT per check) to docs/tmp/privacy-residency.md"
-
-  Agent 2 — Retention (sleep 5):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     CONTEXT: role=[...], scope=[...]
-     sleep 5
-     Read ${CLAUDE_SKILL_DIR}/domains/retention.md
-     Build PII-scoped resource list first.
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/privacy-retention.md"
-
-  Agent 3 — PII Discovery (sleep 10):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     CONTEXT: role=[...], scope=[...]
-     sleep 10
-     Read ${CLAUDE_SKILL_DIR}/domains/pii-discovery.md
-     Build PII-scoped resource list first.
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/privacy-pii.md"
-
-  Agent 4 — Transfer & Sharing (sleep 15):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     CONTEXT: role=[...], scope=[...]
-     sleep 15
-     Read ${CLAUDE_SKILL_DIR}/domains/transfer-sharing.md
-     Build PII-scoped resource list first.
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/privacy-transfer.md"
-
-STEP 4 — Wait for all 4 agents to complete. If any agent failed or did not create its output file, stop and report which domain(s) failed before proceeding.
-
-STEP 5 — Read all 4 temp files:
-  docs/tmp/privacy-residency.md
-  docs/tmp/privacy-retention.md
-  docs/tmp/privacy-pii.md
-  docs/tmp/privacy-transfer.md
-
-STEP 6 — Merge all findings into the final report using the Output Format in SKILL.md.
-Filter clause citations by role before merging.
-
-STEP 7 — Save to docs/privacy-report-YYYY-MM-DD.md (use today's date).
-
-STEP 8 — Clean up: rm -rf docs/tmp/
-
-Return brief summary: X/Y PASS/FAIL controls passing across all domains, Z REPORT items surfaced, top 5 critical gaps.
-  `
-})
-```
+> You are the ISO 27701 privacy audit orchestrator.
+> HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
+>
+> CONTEXT (from interview):
+> - PII role: [Controller / Processor / Both]
+> - PII scope: [tag KEY=VALUE / ALL_STORES]
+> - Allowed regions: [comma-list or "skip"]
+>
+> STEP 1 — Setup:
+>   mkdir -p docs/tmp
+>
+> STEP 2 — Read the SKILL.md output format before starting:
+>   [absolute path: this skill's directory + /SKILL.md — caller: substitute the actual absolute path when dispatching this orchestrator]
+>
+> STEP 3 — Dispatch all 4 domain subagents in parallel (one per domain) in a single batch:
+>
+>   Agent 1 — Data Residency (no delay):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      CONTEXT: role=[...], scope=[...], regions=[...]
+>      Read [absolute path: this skill's directory + /domains/data-residency.md — orchestrator: substitute the actual absolute path]
+>      Build PII-scoped resource list first (see SKILL.md STEP 2).
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings (raw CLI output + PASS/FAIL/REPORT per check) to docs/tmp/privacy-residency.md"
+>
+>   Agent 2 — Retention (sleep 5):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      CONTEXT: role=[...], scope=[...]
+>      sleep 5
+>      Read [absolute path: this skill's directory + /domains/retention.md — orchestrator: substitute the actual absolute path]
+>      Build PII-scoped resource list first.
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/privacy-retention.md"
+>
+>   Agent 3 — PII Discovery (sleep 10):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      CONTEXT: role=[...], scope=[...]
+>      sleep 10
+>      Read [absolute path: this skill's directory + /domains/pii-discovery.md — orchestrator: substitute the actual absolute path]
+>      Build PII-scoped resource list first.
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/privacy-pii.md"
+>
+>   Agent 4 — Transfer & Sharing (sleep 15):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      CONTEXT: role=[...], scope=[...]
+>      sleep 15
+>      Read [absolute path: this skill's directory + /domains/transfer-sharing.md — orchestrator: substitute the actual absolute path]
+>      Build PII-scoped resource list first.
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/privacy-transfer.md"
+>
+> STEP 4 — Wait for all 4 agents to complete. If any agent failed or did not create its output file, stop and report which domain(s) failed before proceeding.
+>
+> STEP 5 — Read all 4 temp files:
+>   docs/tmp/privacy-residency.md
+>   docs/tmp/privacy-retention.md
+>   docs/tmp/privacy-pii.md
+>   docs/tmp/privacy-transfer.md
+>
+> STEP 6 — Merge all findings into the final report using the Output Format in SKILL.md.
+> Filter clause citations by role before merging.
+>
+> STEP 7 — Save to docs/privacy-report-YYYY-MM-DD.md (use today's date).
+>
+> STEP 8 — Clean up: rm -rf docs/tmp/
+>
+> Return brief summary: X/Y PASS/FAIL controls passing across all domains, Z REPORT items surfaced, top 5 critical gaps.
 
 **Main agent rule:** relay only the orchestrator's summary to the user. Point to the report file. Do not run any `aws` CLI commands in the main context.
 
@@ -423,7 +401,7 @@ Dispatching skills (e.g., `cloud-architect`) may invoke this auditor as a subage
 When return mode is `inline`, the subagent returns the same structured content it would write to the report file: scorecard header (PASS / PARTIAL / REPORT / FAIL counts) + PII inventory + findings list grouped by domain.
 
 Example dispatch prompt:
-> "You are running the `privacy-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 5 (all domains), PII Role C (Both), PII Scope B (ALL_STORES), Allowed Regions `ap-southeast-1`, Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–5. Read `${CLAUDE_SKILL_DIR}/SKILL.md` and all four domain files. Execute Step 6. Return the scorecard + PII inventory as the subagent result."
+> "Invoke the `privacy-auditor` skill with these pre-filled answers: Mode A (IaC), Domain 5 (all), PII Role C (Both), PII Scope B (ALL_STORES), Allowed Regions `<region>`, Target path `<path>`, Return mode `inline`. Skip Steps 1–5. The skill reads its own domain files. Execute Step 6 and return the scorecard + PII inventory."
 
 If any required answer is missing from the dispatch prompt, the subagent should fall back to the normal interactive interview (ask the user).
 

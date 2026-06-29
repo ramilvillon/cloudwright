@@ -9,6 +9,8 @@ description: Use when working in an AWS project and asked to analyze, reduce, or
 
 Run a structured, read-only audit of AWS spend across all major domains, then produce prioritized recommendations and ready-to-apply implementation artifacts. No changes are ever made to AWS infrastructure.
 
+> **Bundled file paths.** Paths like `SKILL.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+
 ## HARD CONSTRAINT: READ-ONLY AUDIT ONLY
 
 **You MUST NOT apply, execute, or deploy any changes to AWS infrastructure — ever.**
@@ -76,7 +78,7 @@ An AWS cost audit generates 30–100K+ tokens of raw CLI output and many sequent
 ```
 Main Agent
 └── Orchestrator (general-purpose subagent)
-    ├── Phase 1 — launches 5 domain agents IN PARALLEL (single Agent tool message)
+    ├── Phase 1 — Dispatch all 5 domain subagents in parallel (one per domain) in a single batch
     │   ├── [A] Compute      → EC2, RDS, Lambda, ECS, EKS, ElastiCache, MQ  (no delay)
     │   ├── [B] Storage      → S3, EBS, DynamoDB, Redshift, ECR              (sleep 5)
     │   ├── [C] Networking   → NAT, ELB, CloudFront, WAF, CloudTrail, GuardDuty, Config (sleep 10)
@@ -92,74 +94,68 @@ The startup delays (sleep 5/10/15/20) stagger each agent's initial API burst to 
 
 ### Orchestrator Instructions
 
-When this skill is invoked, the **main agent** immediately calls the `Agent` tool to create an Orchestrator subagent:
+When this skill is invoked, the **main agent** dispatches an Orchestrator subagent.
 
-```
-Agent({
-  description: "AWS cost audit — orchestrator",
-  subagent_type: "general-purpose",
-  prompt: `
-You are the AWS cost audit orchestrator. Follow these steps exactly.
+Dispatch a subagent (general-purpose). Description: "AWS cost audit — orchestrator". Give it this prompt:
 
-HARD CONSTRAINT: Read-only audit only. Never modify, delete, or create any AWS resource.
-
-Step 1 — Setup:
-  mkdir -p docs/tmp
-
-Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-Step 3 — Launch all 5 domain agents IN PARALLEL (send a single Agent tool message with all 5 calls):
-
-  Agent A — Compute domain:
-    "Run all commands in the 'Domain A — Compute' section of the skill file.
-     Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
-     CloudWatch get-metric-data call. No startup delay.
-     Write all collected data to docs/tmp/phase1-compute.md."
-
-  Agent B — Storage & Data domain:
-    "Run all commands in the 'Domain B — Storage & Data' section of the skill file.
-     Apply rate limiting: sleep 0.2 between loop iterations.
-     Startup delay: sleep 5 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/phase1-storage.md."
-
-  Agent C — Networking & Security domain:
-    "Run all commands in the 'Domain C — Networking & Security' section of the skill file.
-     Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
-     CloudWatch call.
-     Startup delay: sleep 10 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/phase1-networking.md."
-
-  Agent D — Identity, Messaging & Data domain:
-    "Run all commands in the 'Domain D — Identity, Messaging & Data' section of the skill file.
-     Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
-     CloudWatch call.
-     Startup delay: sleep 15 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/phase1-identity.md."
-
-  Agent E — Cost & RI domain:
-    "Run all commands in the 'Domain E — Cost & RI' section of the skill file.
-     Apply rate limiting: sleep 1 after EVERY aws ce call (Cost Explorer hard limit: 1 req/s).
-     Startup delay: sleep 20 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/phase1-cost.md."
-
-Step 4 — Wait for all 5 agents to complete (they run in parallel; you are notified when each finishes).
-
-Step 5 — Read all 5 temp files:
-  docs/tmp/phase1-compute.md
-  docs/tmp/phase1-storage.md
-  docs/tmp/phase1-networking.md
-  docs/tmp/phase1-identity.md
-  docs/tmp/phase1-cost.md
-
-Step 6 — Run Phases 2–5 inline (Analyze, Prioritize, Artifacts, Report) per the skill file instructions.
-
-Step 7 — Clean up: rm -rf docs/tmp/
-
-Return a brief terminal summary (top 5 findings + total monthly savings).
-  `
-})
-```
+> You are the AWS cost audit orchestrator. Follow these steps exactly.
+>
+> HARD CONSTRAINT: Read-only audit only. Never modify, delete, or create any AWS resource.
+>
+> Step 1 — Setup:
+>   mkdir -p docs/tmp
+>
+> Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
+>   [Main agent: substitute the absolute path to SKILL.md in this skill's directory]
+>
+> Step 3 — Dispatch all 5 domain subagents in parallel (one per domain) in a single batch:
+>
+>   Agent A — Compute domain:
+>     "Run all commands in the 'Domain A — Compute' section of the skill file.
+>      Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
+>      CloudWatch get-metric-data call. No startup delay.
+>      Write all collected data to docs/tmp/phase1-compute.md."
+>
+>   Agent B — Storage & Data domain:
+>     "Run all commands in the 'Domain B — Storage & Data' section of the skill file.
+>      Apply rate limiting: sleep 0.2 between loop iterations.
+>      Startup delay: sleep 5 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/phase1-storage.md."
+>
+>   Agent C — Networking & Security domain:
+>     "Run all commands in the 'Domain C — Networking & Security' section of the skill file.
+>      Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
+>      CloudWatch call.
+>      Startup delay: sleep 10 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/phase1-networking.md."
+>
+>   Agent D — Identity, Messaging & Data domain:
+>     "Run all commands in the 'Domain D — Identity, Messaging & Data' section of the skill file.
+>      Apply rate limiting: sleep 0.2 between loop iterations, sleep 0.5 after each
+>      CloudWatch call.
+>      Startup delay: sleep 15 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/phase1-identity.md."
+>
+>   Agent E — Cost & RI domain:
+>     "Run all commands in the 'Domain E — Cost & RI' section of the skill file.
+>      Apply rate limiting: sleep 1 after EVERY aws ce call (Cost Explorer hard limit: 1 req/s).
+>      Startup delay: sleep 20 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/phase1-cost.md."
+>
+> Step 4 — Wait for all 5 agents to complete (they run in parallel; you are notified when each finishes).
+>
+> Step 5 — Read all 5 temp files:
+>   docs/tmp/phase1-compute.md
+>   docs/tmp/phase1-storage.md
+>   docs/tmp/phase1-networking.md
+>   docs/tmp/phase1-identity.md
+>   docs/tmp/phase1-cost.md
+>
+> Step 6 — Run Phases 2–5 inline (Analyze, Prioritize, Artifacts, Report) per the skill file instructions.
+>
+> Step 7 — Clean up: rm -rf docs/tmp/
+>
+> Return a brief terminal summary (top 5 findings + total monthly savings).
 
 **Main agent rule:** relay only the orchestrator's summary to the user. Point to `docs/cost-report-YYYY-MM-DD.md` for the full report. Do not run any `aws` CLI commands in the main context.
 

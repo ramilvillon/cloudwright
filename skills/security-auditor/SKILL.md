@@ -13,6 +13,8 @@ Audit AWS infrastructure for ISO 27001:2022 compliance (Annex A, Theme 4 — Tec
 
 Output: a structured compliance scorecard + self-contained remediation artifacts designed for both human review and downstream AI agents.
 
+> **Bundled file paths.** Paths like `domains/iam.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+
 ## HARD CONSTRAINT: READ-ONLY AUDIT ONLY
 
 **Live infra mode MUST NOT apply, execute, or deploy any changes to AWS infrastructure — ever.**
@@ -58,44 +60,36 @@ Wait for the user's response before continuing.
 Announce: _"Starting IaC compliance scan. Scanning Terraform and CloudFormation files for ISO 27001 gaps. No AWS credentials required. No files will be modified."_
 
 Domain file map (use path(s) matching user's domain selection):
-- 1 → `${CLAUDE_SKILL_DIR}/domains/iam.md`
-- 2 → `${CLAUDE_SKILL_DIR}/domains/logging.md`
-- 3 → `${CLAUDE_SKILL_DIR}/domains/threat-detection.md`
-- 4 → `${CLAUDE_SKILL_DIR}/domains/vulnerability.md`
-- 5 → `${CLAUDE_SKILL_DIR}/domains/network.md`
-- 6 → `${CLAUDE_SKILL_DIR}/domains/encryption.md`
-- 7 → `${CLAUDE_SKILL_DIR}/domains/data-protection.md`
+- 1 → `domains/iam.md`
+- 2 → `domains/logging.md`
+- 3 → `domains/threat-detection.md`
+- 4 → `domains/vulnerability.md`
+- 5 → `domains/network.md`
+- 6 → `domains/encryption.md`
+- 7 → `domains/data-protection.md`
 - 8 → all 7 files above
 
-Launch a **single subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27001 IaC compliance scan — [domain(s)]". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27001 IaC compliance scan — [domain(s)]",
-  subagent_type: "general-purpose",
-  prompt: `
-You are an ISO 27001 IaC compliance scanner. Your job is read-only file analysis. Never modify any files.
-
-STEP 1 — Read the domain file(s) for your assigned domain(s):
-[Main agent: substitute this with the actual file paths from the domain file map above, based on the user's selection. e.g. for selection 1: ${CLAUDE_SKILL_DIR}/domains/iam.md]
-
-STEP 2 — Find IaC files in the repo using the Glob tool:
-  Patterns: **/*.tf, **/*.yaml, **/*.yml, **/*.json
-  Exclude: node_modules/, .git/, .terraform/, vendor/, package*.json, package-lock.json
-
-STEP 3 — Run every IaC check defined in the domain file(s) against the found files.
-Read relevant files with the Read tool. Grep for patterns with the Grep tool.
-Determine PASS, FAIL, or PARTIAL per the criteria in each domain file.
-
-STEP 4 — Build the compliance report using the Output Format defined in:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 5 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
-
-Return a brief summary: X/Y controls passing, top 3 critical gaps.
-  `
-})
-```
+> You are an ISO 27001 IaC compliance scanner. Your job is read-only file analysis. Never modify any files.
+>
+> STEP 1 — Read the domain file(s) for your assigned domain(s):
+> [Main agent: substitute the **absolute** path to the domain file(s) based on the user's selection (this skill's directory + /domains/<name>.md)]
+>
+> STEP 2 — Find IaC files in the repo using the Glob tool:
+>   Patterns: **/*.tf, **/*.yaml, **/*.yml, **/*.json
+>   Exclude: node_modules/, .git/, .terraform/, vendor/, package*.json, package-lock.json
+>
+> STEP 3 — Run every IaC check defined in the domain file(s) against the found files.
+> Read relevant files with the Read tool. Grep for patterns with the Grep tool.
+> Determine PASS, FAIL, or PARTIAL per the criteria in each domain file.
+>
+> STEP 4 — Build the compliance report using the Output Format defined in SKILL.md
+> (absolute path: this skill's directory + /SKILL.md — main agent: substitute the actual absolute path in this prompt).
+>
+> STEP 5 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
+>
+> Return a brief summary: X/Y controls passing, top 3 critical gaps.
 
 Main agent: relay the subagent's summary to the user and point to the saved report file.
 
@@ -111,32 +105,24 @@ aws sts get-caller-identity
 ```
 If this fails: stop and ask the user to configure AWS credentials (`aws configure` or set `AWS_PROFILE`).
 
-Launch a **single subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27001 live infra audit — [domain name]". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27001 live infra audit — [domain name]",
-  subagent_type: "general-purpose",
-  prompt: `
-You are an ISO 27001 live AWS compliance auditor.
-HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
-Only use describe-*, list-*, get-* AWS CLI commands.
-
-STEP 1 — Read the domain file for your assigned domain:
-[domain file path from ${CLAUDE_SKILL_DIR}/domains/]
-
-STEP 2 — Run all live infra checks defined in the domain file.
-Apply rate limiting: sleep 0.2 between sequential API calls.
-
-STEP 3 — Build the compliance report using the Output Format defined in:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 4 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
-
-Return a brief summary: X/Y controls passing, top 3 critical gaps.
-  `
-})
-```
+> You are an ISO 27001 live AWS compliance auditor.
+> HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
+> Only use describe-*, list-*, get-* AWS CLI commands.
+>
+> STEP 1 — Read the domain file for your assigned domain:
+> [Main agent: substitute the **absolute** path to the domain file (this skill's directory + /domains/<name>.md)]
+>
+> STEP 2 — Run all live infra checks defined in the domain file.
+> Apply rate limiting: sleep 0.2 between sequential API calls.
+>
+> STEP 3 — Build the compliance report using the Output Format defined in SKILL.md
+> (absolute path: this skill's directory + /SKILL.md — main agent: substitute the actual absolute path in this prompt).
+>
+> STEP 4 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
+>
+> Return a brief summary: X/Y controls passing, top 3 critical gaps.
 
 Main agent: relay the subagent's summary to the user and point to the saved report file.
 
@@ -152,93 +138,85 @@ aws sts get-caller-identity
 ```
 If this fails: stop and ask the user to configure AWS credentials.
 
-Launch an **orchestrator subagent**:
+Dispatch a subagent (general-purpose). Description: "ISO 27001 full compliance audit — orchestrator". Give it this prompt:
 
-```
-Agent({
-  description: "ISO 27001 full compliance audit — orchestrator",
-  subagent_type: "general-purpose",
-  prompt: `
-You are the ISO 27001 compliance audit orchestrator.
-HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
-
-STEP 1 — Setup:
-  mkdir -p docs/tmp
-
-STEP 2 — Read the SKILL.md output format before starting:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-STEP 3 — Launch all 7 domain agents IN PARALLEL (single Agent tool message with all 7 calls):
-
-  Agent 1 — IAM (no delay):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     Read ${CLAUDE_SKILL_DIR}/domains/iam.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings (raw CLI output + PASS/FAIL per check) to docs/tmp/security-iam.md"
-
-  Agent 2 — Logging (sleep 5):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 5
-     Read ${CLAUDE_SKILL_DIR}/domains/logging.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-logging.md"
-
-  Agent 3 — Threat Detection (sleep 10):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 10
-     Read ${CLAUDE_SKILL_DIR}/domains/threat-detection.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-threat.md"
-
-  Agent 4 — Vulnerability (sleep 15):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 15
-     Read ${CLAUDE_SKILL_DIR}/domains/vulnerability.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-vuln.md"
-
-  Agent 5 — Network (sleep 20):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 20
-     Read ${CLAUDE_SKILL_DIR}/domains/network.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-network.md"
-
-  Agent 6 — Encryption (sleep 25):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 25
-     Read ${CLAUDE_SKILL_DIR}/domains/encryption.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-encryption.md"
-
-  Agent 7 — Data Protection (sleep 30):
-    "HARD CONSTRAINT: read-only, never modify AWS.
-     sleep 30
-     Read ${CLAUDE_SKILL_DIR}/domains/data-protection.md
-     Run all live infra checks. sleep 0.2 between sequential API calls.
-     Write findings to docs/tmp/security-data.md"
-
-STEP 4 — Wait for all 7 agents to complete. If any agent failed or did not create its output file, stop and report which domain(s) failed before proceeding.
-
-STEP 5 — Read all 7 temp files:
-  docs/tmp/security-iam.md
-  docs/tmp/security-logging.md
-  docs/tmp/security-threat.md
-  docs/tmp/security-vuln.md
-  docs/tmp/security-network.md
-  docs/tmp/security-encryption.md
-  docs/tmp/security-data.md
-
-STEP 6 — Merge all findings into the final report using the Output Format in SKILL.md.
-
-STEP 7 — Save to docs/security-report-YYYY-MM-DD.md (use today's date).
-
-STEP 8 — Clean up: rm -rf docs/tmp/
-
-Return brief summary: X/Y controls passing across all domains, top 5 critical gaps.
-  `
-})
-```
+> You are the ISO 27001 compliance audit orchestrator.
+> HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resource.
+>
+> STEP 1 — Setup:
+>   mkdir -p docs/tmp
+>
+> STEP 2 — Read the SKILL.md output format before starting:
+>   [absolute path: this skill's directory + /SKILL.md — caller: substitute the actual absolute path when dispatching this orchestrator]
+>
+> STEP 3 — Dispatch all 7 domain subagents in parallel (one per domain) in a single batch:
+>
+>   Agent 1 — IAM (no delay):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      Read [absolute path: this skill's directory + /domains/iam.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings (raw CLI output + PASS/FAIL per check) to docs/tmp/security-iam.md"
+>
+>   Agent 2 — Logging (sleep 5):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 5
+>      Read [absolute path: this skill's directory + /domains/logging.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-logging.md"
+>
+>   Agent 3 — Threat Detection (sleep 10):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 10
+>      Read [absolute path: this skill's directory + /domains/threat-detection.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-threat.md"
+>
+>   Agent 4 — Vulnerability (sleep 15):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 15
+>      Read [absolute path: this skill's directory + /domains/vulnerability.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-vuln.md"
+>
+>   Agent 5 — Network (sleep 20):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 20
+>      Read [absolute path: this skill's directory + /domains/network.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-network.md"
+>
+>   Agent 6 — Encryption (sleep 25):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 25
+>      Read [absolute path: this skill's directory + /domains/encryption.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-encryption.md"
+>
+>   Agent 7 — Data Protection (sleep 30):
+>     "HARD CONSTRAINT: read-only, never modify AWS.
+>      sleep 30
+>      Read [absolute path: this skill's directory + /domains/data-protection.md — orchestrator: substitute the actual absolute path]
+>      Run all live infra checks. sleep 0.2 between sequential API calls.
+>      Write findings to docs/tmp/security-data.md"
+>
+> STEP 4 — Wait for all 7 agents to complete. If any agent failed or did not create its output file, stop and report which domain(s) failed before proceeding.
+>
+> STEP 5 — Read all 7 temp files:
+>   docs/tmp/security-iam.md
+>   docs/tmp/security-logging.md
+>   docs/tmp/security-threat.md
+>   docs/tmp/security-vuln.md
+>   docs/tmp/security-network.md
+>   docs/tmp/security-encryption.md
+>   docs/tmp/security-data.md
+>
+> STEP 6 — Merge all findings into the final report using the Output Format in SKILL.md.
+>
+> STEP 7 — Save to docs/security-report-YYYY-MM-DD.md (use today's date).
+>
+> STEP 8 — Clean up: rm -rf docs/tmp/
+>
+> Return brief summary: X/Y controls passing across all domains, top 5 critical gaps.
 
 **Main agent rule:** relay only the orchestrator's summary to the user. Point to the report file. Do not run any `aws` CLI commands in the main context.
 
@@ -341,7 +319,7 @@ Dispatching skills (e.g., `cloud-architect`) may invoke this auditor as a subage
 When return mode is `inline`, the subagent returns the scorecard in the same structure it would write to the report file: header summary (PASS / PARTIAL / FAIL counts) followed by the findings list grouped by domain.
 
 Example dispatch prompt (what a parent agent would send):
-> "You are running the `security-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 8 (all domains), Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–2. Read `${CLAUDE_SKILL_DIR}/SKILL.md` and all seven domain files. Execute Step 3. Return the scorecard as the subagent result."
+> "Invoke the `security-auditor` skill with these pre-filled answers: Mode A (IaC), Domain 8 (all), Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–2. The skill reads its own domain files. Execute Step 3 and return the scorecard."
 
 If any required answer is missing from the dispatch prompt, the subagent should fall back to the normal interactive interview (ask the user).
 

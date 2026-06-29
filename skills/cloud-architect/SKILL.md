@@ -14,6 +14,8 @@ Outputs (in `<path>.staging/`, promoted to `<path>/` on user confirmation):
 - `README.md` — how to use the generated Terraform
 - Terraform project (layout depends on selected pattern)
 
+> **Bundled file paths.** Paths like `patterns/three-tier-containerized.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+
 ## HARD CONSTRAINT: NO AWS WRITES, NO `terraform apply`
 
 This skill writes to the **local filesystem only**. It:
@@ -140,7 +142,7 @@ Store as `OUTPUT_PATH`. If user doesn't answer, default to `./iac`. Derive `STAG
 
 ## Step 9 — Pattern Selection and Confirmation
 
-Read only the `## When to use` and `## Not when` headers of each pattern file in `${CLAUDE_SKILL_DIR}/patterns/`. Based on `WORKLOAD_DESCRIPTION`, `TRAFFIC`, `AUTH`, and `DATA_SENSITIVITY`, select:
+Read only the `## When to use` and `## Not when` headers of each pattern file in `patterns/`. Based on `WORKLOAD_DESCRIPTION`, `TRAFFIC`, `AUTH`, and `DATA_SENSITIVITY`, select:
 - **Primary pattern** (required)
 - Up to **2 composed patterns** (optional — e.g., `three-tier-containerized` + `event-driven-async` for a web app with a background queue)
 
@@ -159,107 +161,99 @@ Wait for confirmation before dispatching subagents.
 
 ## Step 10 — Generation Subagent
 
-Dispatch **one** subagent:
+Dispatch a subagent (general-purpose). Description: "Generate WAF-aligned Terraform + ADR for {{workload}}". Give it this prompt:
 
-```
-Agent({
-  description: "Generate WAF-aligned Terraform + ADR for {{workload}}",
-  subagent_type: "general-purpose",
-  prompt: `
-You are the cloud-architect generation subagent. Write local files only — no AWS writes.
-
-INPUT:
-- WORKLOAD_DESCRIPTION: {{WORKLOAD_DESCRIPTION}}
-- ENVIRONMENTS: {{ENVIRONMENTS}}  # workload-level envs, e.g., [dev, staging, prod]
-- VPC_LAYER_ENVS: {{VPC_LAYER_ENVS}}  # deduplicated VPC-layer envs, e.g., [nonprod, prod] when dev+staging share
-- ENV_TO_VPC: {{ENV_TO_VPC}}  # mapping, e.g., {dev: nonprod, staging: nonprod, prod: prod}
-- REGION: {{REGION}}
-- TRAFFIC: {{TRAFFIC}}
-- DATA_SENSITIVITY: {{DATA_SENSITIVITY}}
-- AUTH: {{AUTH}}
-- STAGING_PATH: {{STAGING_PATH}}
-- PRIMARY_PATTERN: {{PRIMARY_PATTERN}}
-- COMPOSED_PATTERNS: {{COMPOSED_PATTERNS}}
-- ASSUMPTIONS: {{ASSUMPTIONS_BULLETS}}
-- EXPERIMENTAL: {{true|false}}  # true only if no pattern matched
-
-STEP 1 — Read these files:
-- ${CLAUDE_SKILL_DIR}/patterns/{{PRIMARY_PATTERN}}.md
-- ${CLAUDE_SKILL_DIR}/patterns/{{each composed pattern}}.md
-- ${CLAUDE_SKILL_DIR}/patterns/vpc-foundation.md (if the primary pattern's layout uses modules/networking/)
-- ${CLAUDE_SKILL_DIR}/pillars/reliability.md
-- ${CLAUDE_SKILL_DIR}/pillars/performance.md
-- ${CLAUDE_SKILL_DIR}/pillars/operational-excellence.md
-- ${CLAUDE_SKILL_DIR}/pillars/sustainability.md
-- ${CLAUDE_SKILL_DIR}/templates/adr.md
-- ${CLAUDE_SKILL_DIR}/templates/mermaid-conventions.md
-
-STEP 2 — Create the staging directory:
-  mkdir -p {{STAGING_PATH}}
-  If {{STAGING_PATH}} already exists, abort and return error: "Staging path already exists — move or delete it first."
-
-STEP 3 — Generate Terraform files per the primary pattern's "Terraform layout" section, substituting variables with values derived from the interview answers. If composing multiple patterns, merge their HCL while:
-  - de-duplicating provider, variable, and output blocks
-  - preserving module boundaries
-  - ensuring all cross-module wiring (module outputs → module inputs) is explicit
-
-STEP 4 — Apply ALL 4 pillar rubrics (reliability, performance, operational-excellence, sustainability) to the generated HCL. This means:
-  - default_tags block in the provider (from ops-excellence)
-  - Graviton architectures where applicable (from performance + sustainability)
-  - Multi-AZ defaults (from reliability)
-  - Log retention + alarms (from ops-excellence)
-  - Lifecycle rules on S3 buckets (from sustainability)
-
-STEP 5 — Write ADR.md using templates/adr.md as the scaffold. Fill EVERY placeholder:
-  - {{scope_boundary}} — copy the pattern file's `## Scope boundary` section body verbatim (paragraph + bullet list). If the primary pattern is `account-baseline`, substitute the literal string: `_This pattern IS the account baseline — no deferred controls._`
-  - {{mermaid_diagram}} derived from the pattern's Mermaid snippet, parameterised (e.g., RDS → "RDS Multi-AZ" for prod, "RDS" for dev-only), following templates/mermaid-conventions.md
-  - {{<pillar>_decisions}} taken from the pattern's WAF pillar annotations for that pillar
-  - {{alternatives_bullets}} — explicitly list the 1–2 closest patterns you rejected and why
-  - {{consequences_bullets}} — trade-offs accepted (e.g., single NAT in dev, no read replica, Fargate Spot in non-prod)
-  - {{security_scorecard_summary}} / {{security_findings_detail}} / {{privacy_*}} — leave as placeholder "_pending audit — main agent will fill in_"
-  - If EXPERIMENTAL: prepend the experimental banner from the template file
-
-STEP 6 — Write README.md at the root of the staging path:
-  - "How to use" section: per-env workflow — `terraform init`, then `terraform plan -var-file=<env>.tfvars`, then `terraform apply -var-file=<env>.tfvars`. Recommend separate state backends / workspaces per env.
-  - Required env vars / AWS profile
-  - List of generated `<env>.tfvars` files and which variables each one sets (link to `terraform.tfvars.example` for the full variable catalog)
-  - If `<env>-usage.yml` files were emitted, add a short "Usage estimates" paragraph explaining they're inputs for `infracost breakdown --usage-file` and the user can edit them to re-estimate cost without re-generating
-  - Pointer to ADR.md
-  - Note that the `AUDIT.md` findings are currently embedded in ADR.md (do not create separate AUDIT.md unless findings are too large — in which case create it and link from ADR.md)
-
-STEP 7 — Write per-env `.tfvars` files. The iteration target depends on what the patterns emit:
-  - **If the selected pattern(s) emit ONLY VPC-layer resources** (e.g., `vpc-foundation`, `account-baseline` composed with `vpc-foundation`): iterate over `{{VPC_LAYER_ENVS}}`. Filenames use the VPC-layer env names: e.g., `nonprod.tfvars`, `prod.tfvars` — NOT `dev.tfvars`/`staging.tfvars`/`prod.tfvars` when dev+staging share the nonprod VPC. Writing per-workload-env tfvars in this case would produce duplicate VPCs and confuse the README.
-  - **If the pattern emits workload-level resources that vary per workload env** (e.g., `three-tier-containerized` with per-env ECS services): iterate over `{{ENVIRONMENTS}}`. Filenames use the workload env names: `dev.tfvars`, `staging.tfvars`, `prod.tfvars`.
-  - **If composing both** (VPC foundation + workload pattern): emit BOTH sets in their respective subdirectories — the VPC subproject gets `nonprod.tfvars`/`prod.tfvars`, the workload subproject gets `dev.tfvars`/`staging.tfvars`/`prod.tfvars`. The README explains the handoff and the `ENV_TO_VPC` mapping.
-
-  Each file sets:
-  - The appropriate env variable (`environment = "<vpc-env>"` or `environment = "<workload-env>"`) plus `region = "{{REGION}}"` and any pattern-specific variables.
-  - Per-env defaults pulled from the pillar rubrics:
-    - **prod:** Multi-AZ on, larger instance classes, longer log/backup retention, no Spot, reserved-capacity candidates noted
-    - **staging:** prod-like topology, smaller instances, Fargate Spot allowed
-    - **dev / nonprod:** single-AZ, smallest viable instances, 7-day log retention, Fargate Spot
-  - Omit any secrets; set them via `TF_VAR_` env vars or separate Secrets Manager references.
-
-  Also write `terraform.tfvars.example` (per subproject if the layout is multi-project) as a commented reference showing every available variable. Never write `terraform.tfvars`.
-
-STEP 7b — Write one `<env>-usage.yml` file per entry in the **same iteration target** used in Step 7 (`{{VPC_LAYER_ENVS}}` or `{{ENVIRONMENTS}}`) IF the primary pattern file has a `## Usage drivers` section. These files drive infracost's estimation of usage-dependent resources (CloudFront data transfer, S3 requests, Lambda invocations, etc.) in Step 11.5.
-  - Read the pattern's `## Usage drivers` section — it contains a YAML template with per-traffic-tier numbers (low / medium / high).
-  - For each target env, scale the usage numbers to reflect that env's expected traffic. Mapping: non-prod envs use the tier BELOW the interview's {{TRAFFIC}} (or the low tier floor); prod uses the interview's tier directly. Rationale: pre-prod envs typically see 10x lower traffic than prod.
-  - If the pattern has no `## Usage drivers` section, SKIP this step — do not emit usage files. Step 11.5 will run infracost without a usage file (fixed-cost-only estimate).
-  - Filename convention: alongside the corresponding `<env>.tfvars` (e.g., `nonprod-usage.yml` / `prod-usage.yml`, or `dev-usage.yml` / `staging-usage.yml` / `prod-usage.yml`).
-
-STEP 8 — Run optional syntax check:
-  If terraform is available on PATH, run:
-    cd {{STAGING_PATH}} && terraform init -backend=false && terraform validate
-  Capture the output. Do NOT fail if terraform isn't installed; just note it in your result.
-
-STEP 9 — Return a structured result:
-  - Files written (list of paths)
-  - Terraform validate output (or "skipped — terraform not installed")
-  - Any assumptions made + what default was used
-`
-})
-```
+> You are the cloud-architect generation subagent. Write local files only — no AWS writes.
+>
+> INPUT:
+> - WORKLOAD_DESCRIPTION: {{WORKLOAD_DESCRIPTION}}
+> - ENVIRONMENTS: {{ENVIRONMENTS}}  # workload-level envs, e.g., [dev, staging, prod]
+> - VPC_LAYER_ENVS: {{VPC_LAYER_ENVS}}  # deduplicated VPC-layer envs, e.g., [nonprod, prod] when dev+staging share
+> - ENV_TO_VPC: {{ENV_TO_VPC}}  # mapping, e.g., {dev: nonprod, staging: nonprod, prod: prod}
+> - REGION: {{REGION}}
+> - TRAFFIC: {{TRAFFIC}}
+> - DATA_SENSITIVITY: {{DATA_SENSITIVITY}}
+> - AUTH: {{AUTH}}
+> - STAGING_PATH: {{STAGING_PATH}}
+> - PRIMARY_PATTERN: {{PRIMARY_PATTERN}}
+> - COMPOSED_PATTERNS: {{COMPOSED_PATTERNS}}
+> - ASSUMPTIONS: {{ASSUMPTIONS_BULLETS}}
+> - EXPERIMENTAL: {{true|false}}  # true only if no pattern matched
+>
+> STEP 1 — Read these files (main agent: resolve each path to absolute before dispatching — prefix with this skill's directory):
+> - patterns/{{PRIMARY_PATTERN}}.md
+> - patterns/{{each composed pattern}}.md
+> - patterns/vpc-foundation.md (if the primary pattern's layout uses modules/networking/)
+> - pillars/reliability.md
+> - pillars/performance.md
+> - pillars/operational-excellence.md
+> - pillars/sustainability.md
+> - templates/adr.md
+> - templates/mermaid-conventions.md
+>
+> STEP 2 — Create the staging directory:
+>   mkdir -p {{STAGING_PATH}}
+>   If {{STAGING_PATH}} already exists, abort and return error: "Staging path already exists — move or delete it first."
+>
+> STEP 3 — Generate Terraform files per the primary pattern's "Terraform layout" section, substituting variables with values derived from the interview answers. If composing multiple patterns, merge their HCL while:
+>   - de-duplicating provider, variable, and output blocks
+>   - preserving module boundaries
+>   - ensuring all cross-module wiring (module outputs → module inputs) is explicit
+>
+> STEP 4 — Apply ALL 4 pillar rubrics (reliability, performance, operational-excellence, sustainability) to the generated HCL. This means:
+>   - default_tags block in the provider (from ops-excellence)
+>   - Graviton architectures where applicable (from performance + sustainability)
+>   - Multi-AZ defaults (from reliability)
+>   - Log retention + alarms (from ops-excellence)
+>   - Lifecycle rules on S3 buckets (from sustainability)
+>
+> STEP 5 — Write ADR.md using templates/adr.md as the scaffold. Fill EVERY placeholder:
+>   - {{scope_boundary}} — copy the pattern file's `## Scope boundary` section body verbatim (paragraph + bullet list). If the primary pattern is `account-baseline`, substitute the literal string: `_This pattern IS the account baseline — no deferred controls._`
+>   - {{mermaid_diagram}} derived from the pattern's Mermaid snippet, parameterised (e.g., RDS → "RDS Multi-AZ" for prod, "RDS" for dev-only), following templates/mermaid-conventions.md
+>   - {{<pillar>_decisions}} taken from the pattern's WAF pillar annotations for that pillar
+>   - {{alternatives_bullets}} — explicitly list the 1–2 closest patterns you rejected and why
+>   - {{consequences_bullets}} — trade-offs accepted (e.g., single NAT in dev, no read replica, Fargate Spot in non-prod)
+>   - {{security_scorecard_summary}} / {{security_findings_detail}} / {{privacy_*}} — leave as placeholder "_pending audit — main agent will fill in_"
+>   - If EXPERIMENTAL: prepend the experimental banner from the template file
+>
+> STEP 6 — Write README.md at the root of the staging path:
+>   - "How to use" section: per-env workflow — `terraform init`, then `terraform plan -var-file=<env>.tfvars`, then `terraform apply -var-file=<env>.tfvars`. Recommend separate state backends / workspaces per env.
+>   - Required env vars / AWS profile
+>   - List of generated `<env>.tfvars` files and which variables each one sets (link to `terraform.tfvars.example` for the full variable catalog)
+>   - If `<env>-usage.yml` files were emitted, add a short "Usage estimates" paragraph explaining they're inputs for `infracost breakdown --usage-file` and the user can edit them to re-estimate cost without re-generating
+>   - Pointer to ADR.md
+>   - Note that the `AUDIT.md` findings are currently embedded in ADR.md (do not create separate AUDIT.md unless findings are too large — in which case create it and link from ADR.md)
+>
+> STEP 7 — Write per-env `.tfvars` files. The iteration target depends on what the patterns emit:
+>   - **If the selected pattern(s) emit ONLY VPC-layer resources** (e.g., `vpc-foundation`, `account-baseline` composed with `vpc-foundation`): iterate over `{{VPC_LAYER_ENVS}}`. Filenames use the VPC-layer env names: e.g., `nonprod.tfvars`, `prod.tfvars` — NOT `dev.tfvars`/`staging.tfvars`/`prod.tfvars` when dev+staging share the nonprod VPC. Writing per-workload-env tfvars in this case would produce duplicate VPCs and confuse the README.
+>   - **If the pattern emits workload-level resources that vary per workload env** (e.g., `three-tier-containerized` with per-env ECS services): iterate over `{{ENVIRONMENTS}}`. Filenames use the workload env names: `dev.tfvars`, `staging.tfvars`, `prod.tfvars`.
+>   - **If composing both** (VPC foundation + workload pattern): emit BOTH sets in their respective subdirectories — the VPC subproject gets `nonprod.tfvars`/`prod.tfvars`, the workload subproject gets `dev.tfvars`/`staging.tfvars`/`prod.tfvars`. The README explains the handoff and the `ENV_TO_VPC` mapping.
+>
+>   Each file sets:
+>   - The appropriate env variable (`environment = "<vpc-env>"` or `environment = "<workload-env>"`) plus `region = "{{REGION}}"` and any pattern-specific variables.
+>   - Per-env defaults pulled from the pillar rubrics:
+>     - **prod:** Multi-AZ on, larger instance classes, longer log/backup retention, no Spot, reserved-capacity candidates noted
+>     - **staging:** prod-like topology, smaller instances, Fargate Spot allowed
+>     - **dev / nonprod:** single-AZ, smallest viable instances, 7-day log retention, Fargate Spot
+>   - Omit any secrets; set them via `TF_VAR_` env vars or separate Secrets Manager references.
+>
+>   Also write `terraform.tfvars.example` (per subproject if the layout is multi-project) as a commented reference showing every available variable. Never write `terraform.tfvars`.
+>
+> STEP 7b — Write one `<env>-usage.yml` file per entry in the **same iteration target** used in Step 7 (`{{VPC_LAYER_ENVS}}` or `{{ENVIRONMENTS}}`) IF the primary pattern file has a `## Usage drivers` section. These files drive infracost's estimation of usage-dependent resources (CloudFront data transfer, S3 requests, Lambda invocations, etc.) in Step 11.5.
+>   - Read the pattern's `## Usage drivers` section — it contains a YAML template with per-traffic-tier numbers (low / medium / high).
+>   - For each target env, scale the usage numbers to reflect that env's expected traffic. Mapping: non-prod envs use the tier BELOW the interview's {{TRAFFIC}} (or the low tier floor); prod uses the interview's tier directly. Rationale: pre-prod envs typically see 10x lower traffic than prod.
+>   - If the pattern has no `## Usage drivers` section, SKIP this step — do not emit usage files. Step 11.5 will run infracost without a usage file (fixed-cost-only estimate).
+>   - Filename convention: alongside the corresponding `<env>.tfvars` (e.g., `nonprod-usage.yml` / `prod-usage.yml`, or `dev-usage.yml` / `staging-usage.yml` / `prod-usage.yml`).
+>
+> STEP 8 — Run optional syntax check:
+>   If terraform is available on PATH, run:
+>     cd {{STAGING_PATH}} && terraform init -backend=false && terraform validate
+>   Capture the output. Do NOT fail if terraform isn't installed; just note it in your result.
+>
+> STEP 9 — Return a structured result:
+>   - Files written (list of paths)
+>   - Terraform validate output (or "skipped — terraform not installed")
+>   - Any assumptions made + what default was used
 
 Wait for the subagent to return before proceeding.
 
@@ -267,44 +261,21 @@ Wait for the subagent to return before proceeding.
 
 ## Step 11 — Audit Chain (Parallel Subagents)
 
-Dispatch **two subagents in parallel** (single message with two Agent tool calls):
+Invoke both auditors in parallel (send both invocations in a single message):
 
-### Security audit subagent
+### Security audit
 
-```
-Agent({
-  description: "ISO 27001 IaC audit on {{STAGING_PATH}}",
-  subagent_type: "general-purpose",
-  prompt: `
-You are running the security-auditor skill as a subagent. Skip the normal interview — every answer is pre-filled here.
-
-PRE-FILLED ANSWERS:
+Invoke the `security-auditor` skill (inline — do not spawn an intermediate subagent; the auditor will dispatch its own domain subagents in parallel, keeping nesting at one level for runtimes that cap subagent depth). Pre-filled answers:
 - Step 1 (Audit Mode): A (IaC)
 - Step 2 (Domain Selection): 8 (all domains)
 - Target path: {{STAGING_PATH}}
 - Return mode: inline
 
-STEPS:
-1. Read ${CLAUDE_SKILL_DIR}/../security-auditor/SKILL.md (specifically the "Subagent invocation" section).
-2. Read all 7 domain files under ${CLAUDE_SKILL_DIR}/../security-auditor/domains/.
-3. Execute Step 3 of that skill's flow (IaC compliance scan) against {{STAGING_PATH}}.
-4. Return the full scorecard INLINE (do NOT write docs/security-report-*.md). Format matches what SKILL.md would normally write:
-   - Header summary: PASS/PARTIAL/FAIL counts
-   - Findings list grouped by domain
-`
-})
-```
+The auditor reads its own domain files. Have it execute its IaC compliance scan against {{STAGING_PATH}} and return the full scorecard INLINE (do NOT write docs/security-report-*.md): header summary with PASS/PARTIAL/FAIL counts, then findings grouped by domain.
 
-### Privacy audit subagent
+### Privacy audit
 
-```
-Agent({
-  description: "ISO 27701 IaC audit on {{STAGING_PATH}}",
-  subagent_type: "general-purpose",
-  prompt: `
-You are running the privacy-auditor skill as a subagent. Skip the normal interview — every answer is pre-filled here.
-
-PRE-FILLED ANSWERS:
+Invoke the `privacy-auditor` skill (inline — do not spawn an intermediate subagent; the auditor will dispatch its own domain subagents in parallel, keeping nesting at one level for runtimes that cap subagent depth). Pre-filled answers:
 - Step 1 (Audit Mode): A (IaC)
 - Step 2 (Domain Selection): 5 (all domains)
 - Step 3 (PII Role): C (Both)
@@ -313,16 +284,9 @@ PRE-FILLED ANSWERS:
 - Target path: {{STAGING_PATH}}
 - Return mode: inline
 
-STEPS:
-1. Read ${CLAUDE_SKILL_DIR}/../privacy-auditor/SKILL.md (specifically the "Subagent invocation" section).
-2. Read all 4 domain files under ${CLAUDE_SKILL_DIR}/../privacy-auditor/domains/.
-3. Execute Step 6 of that skill's flow against {{STAGING_PATH}}.
-4. Return the full scorecard + PII inventory INLINE (do NOT write docs/privacy-report-*.md).
-`
-})
-```
+The auditor reads its own domain files. Have it execute Step 6 of its flow against {{STAGING_PATH}} and return the full scorecard + PII inventory INLINE (do NOT write docs/privacy-report-*.md).
 
-Wait for BOTH subagents to return.
+Wait for BOTH auditors to return.
 
 **Failure handling:** if either audit subagent returns an error (e.g., the staging path had malformed HCL that couldn't be parsed), surface the error verbatim, mark audit as `failed` in the ADR's Audit Findings section, and still offer the user the promote/regenerate/keep-staging choice below.
 
