@@ -1,4 +1,4 @@
-# Design: `cloud-architect-suite` Claude Code Plugin
+# Design: `cloudwright` Claude Code Plugin
 
 **Date:** 2026-06-29
 **Author:** Ramil Villon (ramilvillon)
@@ -11,8 +11,8 @@ Package 5 AWS Well-Architected skills (currently living privately in
 single-plugin marketplace repo. Users install with:
 
 ```
-/plugin marketplace add ramilvillon/cloud-architect-suite
-/plugin install cloud-architect-suite
+/plugin marketplace add ramilvillon/cloudwright
+/plugin install cloudwright
 ```
 
 ## Scope
@@ -34,10 +34,10 @@ single-plugin marketplace repo. Users install with:
 
 ## Repo structure
 
-Built in place at `/Users/ramil/projects/personal/cloud-architect-suite` (git-initialized).
+Built in place at `/Users/ramil/projects/personal/cloudwright` (git-initialized).
 
 ```
-cloud-architect-suite/            # repo root
+cloudwright/            # repo root
 ├── .claude-plugin/
 │   ├── plugin.json               # plugin manifest
 │   └── marketplace.json          # single-plugin marketplace, source "./"
@@ -106,12 +106,12 @@ alongside the skills' own auto-trigger descriptions. Commands do not duplicate s
 ## Manifests
 
 **`.claude-plugin/plugin.json`:**
-- `name`: `cloud-architect-suite`
+- `name`: `cloudwright`
 - `version`: `0.1.0`
 - `description`: AWS Well-Architected design + read-only governance auditors (security, privacy, cost, RI)
 - `author`: `{ "name": "Ramil Villon", "url": "https://github.com/ramilvillon" }`
 - `license`: `MIT`
-- `homepage` / `repository`: `https://github.com/ramilvillon/cloud-architect-suite`
+- `homepage` / `repository`: `https://github.com/ramilvillon/cloudwright`
 
 **`.claude-plugin/marketplace.json`:** single-plugin marketplace listing this plugin at
 `source: "./"`, with owner metadata. Exact field names to be confirmed against current
