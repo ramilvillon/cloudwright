@@ -26,6 +26,7 @@ read_field() {  # file field
 }
 
 write_field() {  # file field value
+  [ "$(read_field "$1" "$2")" = "$3" ] && return 0
   case "$1" in
     *.json) jq "$(jq_path "$2") = \"$3\"" "$1" > "$1.tmp" && mv "$1.tmp" "$1" ;;
     *.yaml|*.yml) sed -E -i.bak "s/^($2:[[:space:]]*).*/\1$3/" "$1" && rm -f "$1.bak" ;;
@@ -49,6 +50,7 @@ NEW="${1:?usage: bump-version.sh <new-version> | --check}"
 while IFS=$'\t' read -r path field; do
   f="$REPO_ROOT/$path"
   if [ ! -f "$f" ]; then echo "warning: $path missing, skipping" >&2; continue; fi
+  cur="$(read_field "$f" "$field" 2>/dev/null || true)"
   write_field "$f" "$field" "$NEW"
-  echo "set $path ($field) -> $NEW"
+  if [ "$cur" = "$NEW" ]; then echo "unchanged $path ($field) ($NEW)"; else echo "set $path ($field) -> $NEW"; fi
 done < <(jq -r '.files[] | "\(.path)\t\(.field)"' "$CONFIG")
