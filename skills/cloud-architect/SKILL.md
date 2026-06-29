@@ -285,8 +285,8 @@ PRE-FILLED ANSWERS:
 - Return mode: inline
 
 STEPS:
-1. Read .claude/skills/security-auditor/SKILL.md (specifically the "Subagent invocation" section).
-2. Read all 7 domain files under .claude/skills/security-auditor/domains/.
+1. Read ${CLAUDE_SKILL_DIR}/../security-auditor/SKILL.md (specifically the "Subagent invocation" section).
+2. Read all 7 domain files under ${CLAUDE_SKILL_DIR}/../security-auditor/domains/.
 3. Execute Step 3 of that skill's flow (IaC compliance scan) against {{STAGING_PATH}}.
 4. Return the full scorecard INLINE (do NOT write docs/security-report-*.md). Format matches what SKILL.md would normally write:
    - Header summary: PASS/PARTIAL/FAIL counts
@@ -314,8 +314,8 @@ PRE-FILLED ANSWERS:
 - Return mode: inline
 
 STEPS:
-1. Read .claude/skills/privacy-auditor/SKILL.md (specifically the "Subagent invocation" section).
-2. Read all 4 domain files under .claude/skills/privacy-auditor/domains/.
+1. Read ${CLAUDE_SKILL_DIR}/../privacy-auditor/SKILL.md (specifically the "Subagent invocation" section).
+2. Read all 4 domain files under ${CLAUDE_SKILL_DIR}/../privacy-auditor/domains/.
 3. Execute Step 6 of that skill's flow against {{STAGING_PATH}}.
 4. Return the full scorecard + PII inventory INLINE (do NOT write docs/privacy-report-*.md).
 `
