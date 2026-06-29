@@ -35,6 +35,43 @@ The skills auto-trigger from natural requests (e.g. "audit this Terraform for IS
 
 Then invoke a skill by description or run one of the slash commands above.
 
+## Install on other runtimes
+
+Cloudwright ships a native manifest per runtime, so each installs from the GitHub repo with its own command. The 5 skills follow the [Agent Skills](https://agentskills.io) standard.
+
+### Antigravity (`agy`)
+
+```
+agy plugin install https://github.com/ramilvillon/cloudwright
+```
+
+Installs the skills + commands declared in `plugin.yaml`.
+
+### Codex
+
+```
+codex plugin install https://github.com/ramilvillon/cloudwright
+```
+
+Uses `.codex-plugin/plugin.json` (skills in `skills/`, commands in `commands/`).
+
+### opencode
+
+Clone the repo where opencode can see it, or copy the skills into an opencode skills directory:
+
+```
+git clone https://github.com/ramilvillon/cloudwright
+```
+
+opencode discovers the skills via `.opencode/skills/`. For global use, copy `skills/*` into `~/.config/opencode/skills/` (or your opencode skills dir).
+
+### Claude Code
+
+```
+/plugin marketplace add ramilvillon/cloudwright
+/plugin install cloudwright@ramilvillon
+```
+
 ## Requirements
 
 - Claude Code with plugin support.
