@@ -1,0 +1,19 @@
+{
+  "name": "ramilvillon",
+  "owner": {
+    "name": "Ramil Villon",
+    "email": "ramilvillon@gmail.com",
+    "url": "https://github.com/ramilvillon"
+  },
+  "description": "Ramil Villon's Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "cloudwright",
+      "source": "./",
+      "description": "AWS Well-Architected design plus read-only governance auditors (security, privacy, cost, RI).",
+      "version": "0.1.0",
+      "license": "MIT",
+      "keywords": ["aws", "terraform", "well-architected", "governance"]
+    }
+  ]
+}
