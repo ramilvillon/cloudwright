@@ -35,6 +35,44 @@ The skills auto-trigger from natural requests (e.g. "audit this Terraform for IS
 
 Then invoke a skill by description or run one of the slash commands above.
 
+## Install on other runtimes
+
+The skills follow the [Agent Skills](https://agentskills.io) standard and work on any conformant
+runtime. The universal install target is `~/.agents/skills/`.
+
+### Universal (Codex CLI, Gemini CLI, opencode, Cursor, Copilot, Antigravity)
+
+```
+git clone https://github.com/ramilvillon/cloudwright
+cd cloudwright
+./install.sh            # copies the 5 skills into ~/.agents/skills/
+# or: ./install.sh --symlink   # symlink instead, so repo edits take effect live
+```
+
+Your runtime auto-discovers skills in `~/.agents/skills/`; trigger one by describing the task
+(e.g. "audit this Terraform for ISO 27001") or by invoking it by name.
+
+### Gemini CLI extension (alternative)
+
+```
+gemini extensions install https://github.com/ramilvillon/cloudwright
+```
+
+This uses `gemini-extension.json` + `GEMINI.md` for a managed install.
+
+### Claude Code
+
+```
+/plugin marketplace add ramilvillon/cloudwright
+/plugin install cloudwright@ramilvillon
+```
+
+### Antigravity CLI
+
+Antigravity loads a skill by reading its `SKILL.md` and surfaces installed skills at session start.
+Install via the universal step above (`~/.agents/skills/`); if Antigravity uses a different skills
+directory on your setup, set `AGENTS_SKILLS_DIR=<that dir> ./install.sh`.
+
 ## Requirements
 
 - Claude Code with plugin support.
