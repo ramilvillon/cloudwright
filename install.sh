@@ -28,4 +28,4 @@ for dir in "$SRC"/*/; do
     echo "copied  $name -> $target"
   fi
 done
-echo "Done. ${MODE^} into $DEST"
+echo "Done. Installed ($MODE) into $DEST"
