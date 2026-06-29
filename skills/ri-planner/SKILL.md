@@ -11,6 +11,8 @@ Run a structured, read-only analysis of RI coverage gaps across all RI-eligible 
 
 **No RI purchases are ever made by this skill.**
 
+> **Bundled file paths.** Paths like `references/example.md` in this skill are relative to **this skill's own directory**, which your runtime announces when the skill activates. Read them with your normal file-reading tool. **When you pass such a path into a subagent, first resolve it to an absolute path** (prefix it with this skill's directory) — a subagent does not share this skill's directory context.
+
 ## HARD CONSTRAINT: READ-ONLY ANALYSIS ONLY
 
 **You MUST NOT purchase, create, modify, or delete any AWS resource — ever.**
@@ -78,66 +80,60 @@ The startup delays stagger each agent's initial API burst to avoid thundering-he
 
 ### Orchestrator Instructions
 
-When this skill is invoked, the **main agent** immediately calls the `Agent` tool to create an Orchestrator subagent:
+When this skill is invoked, the **main agent** dispatches an Orchestrator subagent.
 
-```
-Agent({
-  description: "AWS RI planner — orchestrator",
-  subagent_type: "general-purpose",
-  prompt: `
-You are the AWS RI planner orchestrator. Follow these steps exactly.
+Dispatch a subagent (general-purpose). Description: "AWS RI planner — orchestrator". Give it this prompt:
 
-HARD CONSTRAINT: Read-only analysis only. Never purchase, modify, or create any AWS resource.
-
-Step 1 — Setup:
-  mkdir -p docs/tmp
-  aws sts get-caller-identity  # confirm credentials are valid
-
-Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
-  ${CLAUDE_SKILL_DIR}/SKILL.md
-
-Step 3 — Launch all 4 domain agents IN PARALLEL (send a single Agent tool message with all 4 calls):
-
-  Agent A — EC2 domain:
-    "Run all commands in the 'Domain A — EC2' section of the skill file.
-     Apply rate limiting: sleep 1 after every aws ce call.
-     No startup delay.
-     Write all collected data to docs/tmp/ri-ec2.md."
-
-  Agent B — RDS domain:
-    "Run all commands in the 'Domain B — RDS' section of the skill file.
-     Apply rate limiting: sleep 1 after every aws ce call.
-     Startup delay: sleep 5 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/ri-rds.md."
-
-  Agent C — ElastiCache domain:
-    "Run all commands in the 'Domain C — ElastiCache' section of the skill file.
-     Apply rate limiting: sleep 1 after every aws ce call.
-     Startup delay: sleep 10 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/ri-elasticache.md."
-
-  Agent D — OpenSearch domain:
-    "Run all commands in the 'Domain D — OpenSearch' section of the skill file.
-     Apply rate limiting: sleep 1 after every aws ce call.
-     Startup delay: sleep 15 before issuing any AWS CLI calls.
-     Write all collected data to docs/tmp/ri-opensearch.md."
-
-Step 4 — Wait for all 4 agents to complete.
-
-Step 5 — Read all 4 temp files:
-  docs/tmp/ri-ec2.md
-  docs/tmp/ri-rds.md
-  docs/tmp/ri-elasticache.md
-  docs/tmp/ri-opensearch.md
-
-Step 6 — Run Phases 2–5 inline per the skill file instructions.
-
-Step 7 — Clean up: rm -rf docs/tmp/
-
-Return a brief terminal summary (total monthly exposure + top 3 recommendations).
-  `
-})
-```
+> You are the AWS RI planner orchestrator. Follow these steps exactly.
+>
+> HARD CONSTRAINT: Read-only analysis only. Never purchase, modify, or create any AWS resource.
+>
+> Step 1 — Setup:
+>   mkdir -p docs/tmp
+>   aws sts get-caller-identity  # confirm credentials are valid
+>
+> Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
+>   [Main agent: substitute the absolute path to SKILL.md in this skill's directory]
+>
+> Step 3 — Launch all 4 domain agents IN PARALLEL (send a single Agent tool message with all 4 calls):
+>
+>   Agent A — EC2 domain:
+>     "Run all commands in the 'Domain A — EC2' section of the skill file.
+>      Apply rate limiting: sleep 1 after every aws ce call.
+>      No startup delay.
+>      Write all collected data to docs/tmp/ri-ec2.md."
+>
+>   Agent B — RDS domain:
+>     "Run all commands in the 'Domain B — RDS' section of the skill file.
+>      Apply rate limiting: sleep 1 after every aws ce call.
+>      Startup delay: sleep 5 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/ri-rds.md."
+>
+>   Agent C — ElastiCache domain:
+>     "Run all commands in the 'Domain C — ElastiCache' section of the skill file.
+>      Apply rate limiting: sleep 1 after every aws ce call.
+>      Startup delay: sleep 10 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/ri-elasticache.md."
+>
+>   Agent D — OpenSearch domain:
+>     "Run all commands in the 'Domain D — OpenSearch' section of the skill file.
+>      Apply rate limiting: sleep 1 after every aws ce call.
+>      Startup delay: sleep 15 before issuing any AWS CLI calls.
+>      Write all collected data to docs/tmp/ri-opensearch.md."
+>
+> Step 4 — Wait for all 4 agents to complete.
+>
+> Step 5 — Read all 4 temp files:
+>   docs/tmp/ri-ec2.md
+>   docs/tmp/ri-rds.md
+>   docs/tmp/ri-elasticache.md
+>   docs/tmp/ri-opensearch.md
+>
+> Step 6 — Run Phases 2–5 inline per the skill file instructions.
+>
+> Step 7 — Clean up: rm -rf docs/tmp/
+>
+> Return a brief terminal summary (total monthly exposure + top 3 recommendations).
 
 **Main agent rule:** relay only the orchestrator's summary to the user. Point to `docs/ri-plan-YYYY-MM-DD.md` for the full report. Do not run any `aws` CLI commands in the main context.
 
