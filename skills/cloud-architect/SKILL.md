@@ -140,7 +140,7 @@ Store as `OUTPUT_PATH`. If user doesn't answer, default to `./iac`. Derive `STAG
 
 ## Step 9 — Pattern Selection and Confirmation
 
-Read only the `## When to use` and `## Not when` headers of each pattern file in `.claude/skills/cloud-architect/patterns/`. Based on `WORKLOAD_DESCRIPTION`, `TRAFFIC`, `AUTH`, and `DATA_SENSITIVITY`, select:
+Read only the `## When to use` and `## Not when` headers of each pattern file in `${CLAUDE_SKILL_DIR}/patterns/`. Based on `WORKLOAD_DESCRIPTION`, `TRAFFIC`, `AUTH`, and `DATA_SENSITIVITY`, select:
 - **Primary pattern** (required)
 - Up to **2 composed patterns** (optional — e.g., `three-tier-containerized` + `event-driven-async` for a web app with a background queue)
 
@@ -184,15 +184,15 @@ INPUT:
 - EXPERIMENTAL: {{true|false}}  # true only if no pattern matched
 
 STEP 1 — Read these files:
-- .claude/skills/cloud-architect/patterns/{{PRIMARY_PATTERN}}.md
-- .claude/skills/cloud-architect/patterns/{{each composed pattern}}.md
-- .claude/skills/cloud-architect/patterns/vpc-foundation.md (if the primary pattern's layout uses modules/networking/)
-- .claude/skills/cloud-architect/pillars/reliability.md
-- .claude/skills/cloud-architect/pillars/performance.md
-- .claude/skills/cloud-architect/pillars/operational-excellence.md
-- .claude/skills/cloud-architect/pillars/sustainability.md
-- .claude/skills/cloud-architect/templates/adr.md
-- .claude/skills/cloud-architect/templates/mermaid-conventions.md
+- ${CLAUDE_SKILL_DIR}/patterns/{{PRIMARY_PATTERN}}.md
+- ${CLAUDE_SKILL_DIR}/patterns/{{each composed pattern}}.md
+- ${CLAUDE_SKILL_DIR}/patterns/vpc-foundation.md (if the primary pattern's layout uses modules/networking/)
+- ${CLAUDE_SKILL_DIR}/pillars/reliability.md
+- ${CLAUDE_SKILL_DIR}/pillars/performance.md
+- ${CLAUDE_SKILL_DIR}/pillars/operational-excellence.md
+- ${CLAUDE_SKILL_DIR}/pillars/sustainability.md
+- ${CLAUDE_SKILL_DIR}/templates/adr.md
+- ${CLAUDE_SKILL_DIR}/templates/mermaid-conventions.md
 
 STEP 2 — Create the staging directory:
   mkdir -p {{STAGING_PATH}}

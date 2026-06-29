@@ -58,13 +58,13 @@ Wait for the user's response before continuing.
 Announce: _"Starting IaC compliance scan. Scanning Terraform and CloudFormation files for ISO 27001 gaps. No AWS credentials required. No files will be modified."_
 
 Domain file map (use path(s) matching user's domain selection):
-- 1 → `.claude/skills/security-auditor/domains/iam.md`
-- 2 → `.claude/skills/security-auditor/domains/logging.md`
-- 3 → `.claude/skills/security-auditor/domains/threat-detection.md`
-- 4 → `.claude/skills/security-auditor/domains/vulnerability.md`
-- 5 → `.claude/skills/security-auditor/domains/network.md`
-- 6 → `.claude/skills/security-auditor/domains/encryption.md`
-- 7 → `.claude/skills/security-auditor/domains/data-protection.md`
+- 1 → `${CLAUDE_SKILL_DIR}/domains/iam.md`
+- 2 → `${CLAUDE_SKILL_DIR}/domains/logging.md`
+- 3 → `${CLAUDE_SKILL_DIR}/domains/threat-detection.md`
+- 4 → `${CLAUDE_SKILL_DIR}/domains/vulnerability.md`
+- 5 → `${CLAUDE_SKILL_DIR}/domains/network.md`
+- 6 → `${CLAUDE_SKILL_DIR}/domains/encryption.md`
+- 7 → `${CLAUDE_SKILL_DIR}/domains/data-protection.md`
 - 8 → all 7 files above
 
 Launch a **single subagent**:
@@ -77,7 +77,7 @@ Agent({
 You are an ISO 27001 IaC compliance scanner. Your job is read-only file analysis. Never modify any files.
 
 STEP 1 — Read the domain file(s) for your assigned domain(s):
-[Main agent: substitute this with the actual file paths from the domain file map above, based on the user's selection. e.g. for selection 1: .claude/skills/security-auditor/domains/iam.md]
+[Main agent: substitute this with the actual file paths from the domain file map above, based on the user's selection. e.g. for selection 1: ${CLAUDE_SKILL_DIR}/domains/iam.md]
 
 STEP 2 — Find IaC files in the repo using the Glob tool:
   Patterns: **/*.tf, **/*.yaml, **/*.yml, **/*.json
@@ -88,7 +88,7 @@ Read relevant files with the Read tool. Grep for patterns with the Grep tool.
 Determine PASS, FAIL, or PARTIAL per the criteria in each domain file.
 
 STEP 4 — Build the compliance report using the Output Format defined in:
-  .claude/skills/security-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 5 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
 
@@ -123,13 +123,13 @@ HARD CONSTRAINT: read-only only. Never modify, delete, or create any AWS resourc
 Only use describe-*, list-*, get-* AWS CLI commands.
 
 STEP 1 — Read the domain file for your assigned domain:
-[domain file path from .claude/skills/security-auditor/domains/]
+[domain file path from ${CLAUDE_SKILL_DIR}/domains/]
 
 STEP 2 — Run all live infra checks defined in the domain file.
 Apply rate limiting: sleep 0.2 between sequential API calls.
 
 STEP 3 — Build the compliance report using the Output Format defined in:
-  .claude/skills/security-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 4 — Save report to docs/security-report-YYYY-MM-DD.md (use today's date).
 
@@ -166,55 +166,55 @@ STEP 1 — Setup:
   mkdir -p docs/tmp
 
 STEP 2 — Read the SKILL.md output format before starting:
-  .claude/skills/security-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 3 — Launch all 7 domain agents IN PARALLEL (single Agent tool message with all 7 calls):
 
   Agent 1 — IAM (no delay):
     "HARD CONSTRAINT: read-only, never modify AWS.
-     Read .claude/skills/security-auditor/domains/iam.md
+     Read ${CLAUDE_SKILL_DIR}/domains/iam.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings (raw CLI output + PASS/FAIL per check) to docs/tmp/security-iam.md"
 
   Agent 2 — Logging (sleep 5):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 5
-     Read .claude/skills/security-auditor/domains/logging.md
+     Read ${CLAUDE_SKILL_DIR}/domains/logging.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-logging.md"
 
   Agent 3 — Threat Detection (sleep 10):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 10
-     Read .claude/skills/security-auditor/domains/threat-detection.md
+     Read ${CLAUDE_SKILL_DIR}/domains/threat-detection.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-threat.md"
 
   Agent 4 — Vulnerability (sleep 15):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 15
-     Read .claude/skills/security-auditor/domains/vulnerability.md
+     Read ${CLAUDE_SKILL_DIR}/domains/vulnerability.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-vuln.md"
 
   Agent 5 — Network (sleep 20):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 20
-     Read .claude/skills/security-auditor/domains/network.md
+     Read ${CLAUDE_SKILL_DIR}/domains/network.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-network.md"
 
   Agent 6 — Encryption (sleep 25):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 25
-     Read .claude/skills/security-auditor/domains/encryption.md
+     Read ${CLAUDE_SKILL_DIR}/domains/encryption.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-encryption.md"
 
   Agent 7 — Data Protection (sleep 30):
     "HARD CONSTRAINT: read-only, never modify AWS.
      sleep 30
-     Read .claude/skills/security-auditor/domains/data-protection.md
+     Read ${CLAUDE_SKILL_DIR}/domains/data-protection.md
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/security-data.md"
 
@@ -341,7 +341,7 @@ Dispatching skills (e.g., `cloud-architect`) may invoke this auditor as a subage
 When return mode is `inline`, the subagent returns the scorecard in the same structure it would write to the report file: header summary (PASS / PARTIAL / FAIL counts) followed by the findings list grouped by domain.
 
 Example dispatch prompt (what a parent agent would send):
-> "You are running the `security-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 8 (all domains), Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–2. Read `.claude/skills/security-auditor/SKILL.md` and all seven domain files. Execute Step 3. Return the scorecard as the subagent result."
+> "You are running the `security-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 8 (all domains), Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–2. Read `${CLAUDE_SKILL_DIR}/SKILL.md` and all seven domain files. Execute Step 3. Return the scorecard as the subagent result."
 
 If any required answer is missing from the dispatch prompt, the subagent should fall back to the normal interactive interview (ask the user).
 

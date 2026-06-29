@@ -94,7 +94,7 @@ Step 1 — Setup:
   aws sts get-caller-identity  # confirm credentials are valid
 
 Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
-  <project-root>/.claude/skills/ri-planner/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 Step 3 — Launch all 4 domain agents IN PARALLEL (send a single Agent tool message with all 4 calls):
 

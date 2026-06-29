@@ -107,7 +107,7 @@ Step 1 — Setup:
   mkdir -p docs/tmp
 
 Step 2 — Read the full skill file to get all Phase 1 commands and Phase 2–5 instructions:
-  <project-root>/.claude/skills/cost-auditor/skill.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 Step 3 — Launch all 5 domain agents IN PARALLEL (send a single Agent tool message with all 5 calls):
 

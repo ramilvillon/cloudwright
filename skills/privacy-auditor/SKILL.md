@@ -105,10 +105,10 @@ Wait for the user's response before continuing.
 Announce: _"Starting IaC privacy scan. Scanning Terraform and CloudFormation files for ISO 27701 gaps. No AWS credentials required. No files will be modified."_
 
 Domain file map (use path(s) matching user's domain selection):
-- 1 → `.claude/skills/privacy-auditor/domains/data-residency.md`
-- 2 → `.claude/skills/privacy-auditor/domains/retention.md`
-- 3 → `.claude/skills/privacy-auditor/domains/pii-discovery.md`
-- 4 → `.claude/skills/privacy-auditor/domains/transfer-sharing.md`
+- 1 → `${CLAUDE_SKILL_DIR}/domains/data-residency.md`
+- 2 → `${CLAUDE_SKILL_DIR}/domains/retention.md`
+- 3 → `${CLAUDE_SKILL_DIR}/domains/pii-discovery.md`
+- 4 → `${CLAUDE_SKILL_DIR}/domains/transfer-sharing.md`
 - 5 → all 4 files above
 
 Launch a **single subagent**:
@@ -138,7 +138,7 @@ Determine PASS / FAIL / PARTIAL / REPORT per the criteria in each domain file.
 Filter clause citations by role: Controller → A.7.x only, Processor → B.8.x only, Both → cite both.
 
 STEP 4 — Build the privacy report using the Output Format defined in:
-  .claude/skills/privacy-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
 
@@ -178,7 +178,7 @@ CONTEXT (from interview):
 - Allowed regions: [comma-list or "skip"]
 
 STEP 1 — Read the domain file for your assigned domain:
-[domain file path from .claude/skills/privacy-auditor/domains/]
+[domain file path from ${CLAUDE_SKILL_DIR}/domains/]
 
 STEP 2 — Build the PII-scoped resource list first.
 If scope is tag-based: list resources carrying PII_TAG_KEY=PII_TAG_VALUE using the Resource Groups Tagging API.
@@ -190,7 +190,7 @@ Apply rate limiting: sleep 0.2 between sequential API calls.
 Filter clause citations by role.
 
 STEP 4 — Build the privacy report using the Output Format defined in:
-  .claude/skills/privacy-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 5 — Save report to docs/privacy-report-YYYY-MM-DD.md (use today's date).
 
@@ -232,14 +232,14 @@ STEP 1 — Setup:
   mkdir -p docs/tmp
 
 STEP 2 — Read the SKILL.md output format before starting:
-  .claude/skills/privacy-auditor/SKILL.md
+  ${CLAUDE_SKILL_DIR}/SKILL.md
 
 STEP 3 — Launch all 4 domain agents IN PARALLEL (single Agent tool message with all 4 calls):
 
   Agent 1 — Data Residency (no delay):
     "HARD CONSTRAINT: read-only, never modify AWS.
      CONTEXT: role=[...], scope=[...], regions=[...]
-     Read .claude/skills/privacy-auditor/domains/data-residency.md
+     Read ${CLAUDE_SKILL_DIR}/domains/data-residency.md
      Build PII-scoped resource list first (see SKILL.md STEP 2).
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings (raw CLI output + PASS/FAIL/REPORT per check) to docs/tmp/privacy-residency.md"
@@ -248,7 +248,7 @@ STEP 3 — Launch all 4 domain agents IN PARALLEL (single Agent tool message wit
     "HARD CONSTRAINT: read-only, never modify AWS.
      CONTEXT: role=[...], scope=[...]
      sleep 5
-     Read .claude/skills/privacy-auditor/domains/retention.md
+     Read ${CLAUDE_SKILL_DIR}/domains/retention.md
      Build PII-scoped resource list first.
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/privacy-retention.md"
@@ -257,7 +257,7 @@ STEP 3 — Launch all 4 domain agents IN PARALLEL (single Agent tool message wit
     "HARD CONSTRAINT: read-only, never modify AWS.
      CONTEXT: role=[...], scope=[...]
      sleep 10
-     Read .claude/skills/privacy-auditor/domains/pii-discovery.md
+     Read ${CLAUDE_SKILL_DIR}/domains/pii-discovery.md
      Build PII-scoped resource list first.
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/privacy-pii.md"
@@ -266,7 +266,7 @@ STEP 3 — Launch all 4 domain agents IN PARALLEL (single Agent tool message wit
     "HARD CONSTRAINT: read-only, never modify AWS.
      CONTEXT: role=[...], scope=[...]
      sleep 15
-     Read .claude/skills/privacy-auditor/domains/transfer-sharing.md
+     Read ${CLAUDE_SKILL_DIR}/domains/transfer-sharing.md
      Build PII-scoped resource list first.
      Run all live infra checks. sleep 0.2 between sequential API calls.
      Write findings to docs/tmp/privacy-transfer.md"
@@ -423,7 +423,7 @@ Dispatching skills (e.g., `cloud-architect`) may invoke this auditor as a subage
 When return mode is `inline`, the subagent returns the same structured content it would write to the report file: scorecard header (PASS / PARTIAL / REPORT / FAIL counts) + PII inventory + findings list grouped by domain.
 
 Example dispatch prompt:
-> "You are running the `privacy-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 5 (all domains), PII Role C (Both), PII Scope B (ALL_STORES), Allowed Regions `ap-southeast-1`, Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–5. Read `.claude/skills/privacy-auditor/SKILL.md` and all four domain files. Execute Step 6. Return the scorecard + PII inventory as the subagent result."
+> "You are running the `privacy-auditor` skill. Pre-filled answers: Mode A (IaC), Domain 5 (all domains), PII Role C (Both), PII Scope B (ALL_STORES), Allowed Regions `ap-southeast-1`, Target path `./infra.staging/`, Return mode `inline`. Skip Steps 1–5. Read `${CLAUDE_SKILL_DIR}/SKILL.md` and all four domain files. Execute Step 6. Return the scorecard + PII inventory as the subagent result."
 
 If any required answer is missing from the dispatch prompt, the subagent should fall back to the normal interactive interview (ask the user).
 
