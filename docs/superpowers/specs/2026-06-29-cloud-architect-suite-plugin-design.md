@@ -34,7 +34,7 @@ single-plugin marketplace repo. Users install with:
 
 ## Repo structure
 
-Built in place at `/Users/ramil/projects/personal/cloud-skill` (git-initialized, empty).
+Built in place at `/Users/ramil/projects/personal/cloud-architect-suite` (git-initialized).
 
 ```
 cloud-architect-suite/            # repo root
