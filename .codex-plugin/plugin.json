@@ -11,6 +11,5 @@
   "repository": "https://github.com/ramilvillon/cloudwright",
   "license": "MIT",
   "keywords": ["aws", "terraform", "well-architected", "iso-27001", "iso-27701", "cost-optimization", "security-audit", "privacy", "reserved-instances", "iac"],
-  "skills": "./skills/",
-  "commands": "./commands/"
+  "skills": "./skills/"
 }
