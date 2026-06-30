@@ -1,0 +1,11 @@
+name: cloudwright
+version: 0.2.0
+description: AWS Well-Architected design plus read-only governance auditors (security, privacy, cost, Reserved Instances). Writes local files only — never applies to AWS.
+author: Ramil Villon
+homepage: https://github.com/ramilvillon/cloudwright
+provides_skills:
+  - cloud-architect
+  - security-auditor
+  - privacy-auditor
+  - cost-auditor
+  - ri-planner

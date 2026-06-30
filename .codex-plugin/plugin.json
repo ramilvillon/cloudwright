@@ -1,6 +1,5 @@
 {
   "name": "cloudwright",
-  "displayName": "Cloudwright",
   "version": "0.2.0",
   "description": "AWS Well-Architected design plus read-only governance auditors: architecture generation (ADR + Terraform), ISO 27001 security, ISO 27701 privacy, cost optimization, and Reserved Instance planning. Writes local files only — never applies to AWS.",
   "author": {
@@ -11,16 +10,6 @@
   "homepage": "https://github.com/ramilvillon/cloudwright",
   "repository": "https://github.com/ramilvillon/cloudwright",
   "license": "MIT",
-  "keywords": [
-    "aws",
-    "terraform",
-    "well-architected",
-    "iso-27001",
-    "iso-27701",
-    "cost-optimization",
-    "security-audit",
-    "privacy",
-    "reserved-instances",
-    "iac"
-  ]
+  "keywords": ["aws", "terraform", "well-architected", "iso-27001", "iso-27701", "cost-optimization", "security-audit", "privacy", "reserved-instances", "iac"],
+  "skills": "./skills/"
 }

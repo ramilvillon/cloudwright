@@ -16,15 +16,7 @@ Every skill is **read-only against AWS**. The plugin writes local files (Terrafo
 | `cost-auditor` | Structured read-only AWS cost audit across all major domains; prioritized, ready-to-apply recommendations. |
 | `ri-planner` | Reserved Instance coverage analysis across EC2, RDS, ElastiCache, OpenSearch; prioritized purchase plan. |
 
-The skills auto-trigger from natural requests (e.g. "audit this Terraform for ISO 27001", "where can I cut AWS cost?"). Each also has an explicit slash command.
-
-## Slash commands
-
-- `/cloudwright:architect` — design an AWS architecture
-- `/cloudwright:security-audit` — ISO 27001 audit
-- `/cloudwright:privacy-audit` — ISO 27701 audit
-- `/cloudwright:cost-audit` — cost audit
-- `/cloudwright:ri-plan` — Reserved Instance plan
+The skills auto-trigger from natural requests (e.g. "audit this Terraform for ISO 27001", "where can I cut AWS cost?"). You can also invoke any skill by name.
 
 ## Install
 
@@ -33,7 +25,44 @@ The skills auto-trigger from natural requests (e.g. "audit this Terraform for IS
 /plugin install cloudwright@ramilvillon
 ```
 
-Then invoke a skill by description or run one of the slash commands above.
+Then invoke a skill by description or by name.
+
+## Install on other runtimes
+
+Cloudwright ships a native manifest per runtime, so each installs from the GitHub repo with its own command. The 5 skills follow the [Agent Skills](https://agentskills.io) standard.
+
+### Antigravity (`agy`)
+
+```
+agy plugin install https://github.com/ramilvillon/cloudwright
+```
+
+Installs the 5 skills declared in `plugin.yaml`.
+
+### Codex
+
+```
+codex plugin install https://github.com/ramilvillon/cloudwright
+```
+
+Uses `.codex-plugin/plugin.json` (skills in `skills/`).
+
+### opencode
+
+Clone the repo where opencode can see it, or copy the skills into an opencode skills directory:
+
+```
+git clone https://github.com/ramilvillon/cloudwright
+```
+
+opencode discovers the skills via `.opencode/skills/`. For global use, copy `skills/*` into `~/.config/opencode/skills/` (or your opencode skills dir).
+
+### Claude Code
+
+```
+/plugin marketplace add ramilvillon/cloudwright
+/plugin install cloudwright@ramilvillon
+```
 
 ## Requirements
 
