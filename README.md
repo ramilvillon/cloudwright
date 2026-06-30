@@ -1,6 +1,9 @@
 # Cloudwright
 
-Build AWS clouds, well — and verify them. Cloudwright is a [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin bundling one architecture-design skill and four read-only governance auditors, all centered on AWS and Terraform.
+[![Release](https://img.shields.io/github/v/release/ramilvillon/cloudwright)](https://github.com/ramilvillon/cloudwright/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+Build AWS clouds, well — and verify them. Cloudwright bundles one architecture-design skill and four read-only governance auditors for AWS and Terraform, packaged as [Agent Skills](https://agentskills.io) that run on [Claude Code](https://docs.claude.com/en/docs/claude-code), Antigravity (`agy`), Codex, and opencode.
 
 ## Safety posture
 
@@ -66,7 +69,7 @@ opencode discovers the skills via `.opencode/skills/`. For global use, copy `ski
 
 ## Requirements
 
-- Claude Code with plugin support.
+- A supported runtime: Claude Code, Antigravity (`agy`), Codex, or opencode.
 - For **live** audit / cost / RI modes: AWS credentials with read-only access (the skills use only `describe-*`, `list-*`, `get-*` calls). For **IaC** mode (scanning `.tf` / CloudFormation files): no AWS credentials needed.
 
 ## License
