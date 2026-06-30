@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version consistency across manifests
+        run: bash scripts/bump-version.sh --check
+
+      - name: Manifests are valid JSON
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json .codex-plugin/plugin.json; do
+            echo "checking $f"
+            python3 -m json.tool "$f" > /dev/null
+          done
+
+      - name: plugin.yaml has required top-level keys
+        run: |
+          for key in name version description provides_skills; do
+            grep -qE "^${key}:" plugin.yaml || { echo "plugin.yaml missing '${key}:'"; exit 1; }
+          done
+
+      - name: Every skill has name + description frontmatter
+        run: |
+          fail=0
+          for d in skills/*/; do
+            f="${d}SKILL.md"
+            [ -f "$f" ] || { echo "$d missing SKILL.md"; fail=1; continue; }
+            head -1 "$f" | grep -qx -- '---' || { echo "$f missing frontmatter fence"; fail=1; }
+            grep -qE '^name:[[:space:]]*\S' "$f" || { echo "$f missing name:"; fail=1; }
+            grep -qE '^description:[[:space:]]*\S' "$f" || { echo "$f missing description:"; fail=1; }
+          done
+          exit $fail
